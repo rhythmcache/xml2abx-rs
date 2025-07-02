@@ -1,6 +1,6 @@
 [package]
 name = "xml2abx"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["rhythmcache"]
 description = "Rust Library To Convert Human Readable XML into Android Binary Xml (ABX)"
@@ -22,7 +22,7 @@ path = "src/lib.rs"
 base64 = "0.22"
 hex = "0.4"
 clap = { version = "4.4", features = ["derive"] }
-thiserror = "1.0"
+thiserror = "2.0"
 byteorder = "1.5"
 quick-xml = { version = "0.38.0", features = ["encoding", "escape-html", "overlapped-lists"] }
 
