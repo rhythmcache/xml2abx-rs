@@ -17,7 +17,10 @@ Arguments:
 
 Options:
   -i, --in-place  Overwrite the input file with the output
+      --collapse-whitespace  Collapse whitespace
 ```
+- Collapsing whitespaces could significantly decrease binary XML size, but it could also break the XML indentation
+
 
 ## Library Usage
 - Basic Usage

@@ -24,11 +24,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Overwrite the input file with the output")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("collapse-whitespace")
+                .long("collapse-whitespace")
+                .help("Collapse whitespace")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches();
 
     let input_path = matches.get_one::<String>("input").unwrap();
     let output_path = matches.get_one::<String>("output");
     let in_place = matches.get_flag("in-place");
+    let collapse_whitespace = matches.get_flag("collapse-whitespace");
+    
+    // preserve_whitespace is the inverse of collapse_whitespace
+    let preserve_whitespace = !collapse_whitespace;
 
     let final_output_path = if in_place {
         if input_path == "-" {
@@ -49,11 +59,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(ref output_path) = final_output_path {
             if output_path == "-" {
-                XmlToAbxConverter::convert_from_string(&xml_content, io::stdout())
+                XmlToAbxConverter::convert_from_string_with_options(&xml_content, io::stdout(), preserve_whitespace)
             } else {
                 let file = File::create(output_path)?;
                 let writer = BufWriter::new(file);
-                XmlToAbxConverter::convert_from_string(&xml_content, writer)
+                XmlToAbxConverter::convert_from_string_with_options(&xml_content, writer, preserve_whitespace)
             }
         } else {
             eprintln!("Error: Output path is required");
@@ -66,11 +76,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(ref output_path) = final_output_path {
             if output_path == "-" {
-                XmlToAbxConverter::convert_from_string(&xml_content, io::stdout())
+                XmlToAbxConverter::convert_from_string_with_options(&xml_content, io::stdout(), preserve_whitespace)
             } else {
                 let file = File::create(output_path)?;
                 let writer = BufWriter::new(file);
-                XmlToAbxConverter::convert_from_string(&xml_content, writer)
+                XmlToAbxConverter::convert_from_string_with_options(&xml_content, writer, preserve_whitespace)
             }
         } else {
             eprintln!("Error: Output path is required");

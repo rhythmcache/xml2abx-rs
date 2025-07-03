@@ -142,6 +142,7 @@ pub struct BinaryXmlSerializer<W: Write> {
     output: FastDataOutput<W>,
     tag_count: usize,
     tag_names: Vec<String>,
+    preserve_whitespace: bool,
 }
 
 // Constants
@@ -175,6 +176,10 @@ impl<W: Write> BinaryXmlSerializer<W> {
     pub const TYPE_BOOLEAN_FALSE: u8 = 13 << 4;
 
     pub fn new(writer: W) -> Result<Self, ConversionError> {
+        Self::with_options(writer, true)
+    }
+
+    pub fn with_options(writer: W, preserve_whitespace: bool) -> Result<Self, ConversionError> {
         let mut output = FastDataOutput::new(writer);
         output.write_bytes(&Self::PROTOCOL_MAGIC_VERSION_0)?;
 
@@ -182,6 +187,7 @@ impl<W: Write> BinaryXmlSerializer<W> {
             output,
             tag_count: 0,
             tag_names: Vec::with_capacity(8),
+            preserve_whitespace,
         })
     }
 
@@ -441,31 +447,63 @@ pub struct XmlToAbxConverter;
 
 impl XmlToAbxConverter {
     pub fn convert_from_string<W: Write>(xml: &str, writer: W) -> Result<(), ConversionError> {
+        Self::convert_from_string_with_options(xml, writer, true)
+    }
+
+    pub fn convert_from_string_with_options<W: Write>(
+        xml: &str,
+        writer: W,
+        preserve_whitespace: bool,
+    ) -> Result<(), ConversionError> {
         let mut reader = Reader::from_str(xml);
-        reader.config_mut().trim_text(false);
-        Self::convert_reader(reader, writer)
+        reader.config_mut().trim_text(!preserve_whitespace);
+        Self::convert_reader_with_options(reader, writer, preserve_whitespace)
     }
 
     pub fn convert_from_file<W: Write>(input_path: &str, writer: W) -> Result<(), ConversionError> {
+        Self::convert_from_file_with_options(input_path, writer, true)
+    }
+
+    pub fn convert_from_file_with_options<W: Write>(
+        input_path: &str,
+        writer: W,
+        preserve_whitespace: bool,
+    ) -> Result<(), ConversionError> {
         let mut reader = Reader::from_file(input_path)?;
-        reader.config_mut().trim_text(false);
-        Self::convert_reader(reader, writer)
+        reader.config_mut().trim_text(!preserve_whitespace);
+        Self::convert_reader_with_options(reader, writer, preserve_whitespace)
     }
 
     pub fn convert_from_reader<R: BufRead, W: Write>(
         input: R,
         writer: W,
     ) -> Result<(), ConversionError> {
-        let mut reader = Reader::from_reader(input);
-        reader.config_mut().trim_text(false);
-        Self::convert_reader(reader, writer)
+        Self::convert_from_reader_with_options(input, writer, true)
     }
 
-    fn convert_reader<R: BufRead, W: Write>(
+    pub fn convert_from_reader_with_options<R: BufRead, W: Write>(
+        input: R,
+        writer: W,
+        preserve_whitespace: bool,
+    ) -> Result<(), ConversionError> {
+        let mut reader = Reader::from_reader(input);
+        reader.config_mut().trim_text(!preserve_whitespace);
+        Self::convert_reader_with_options(reader, writer, preserve_whitespace)
+    }
+
+   /// fn convert_reader<R: BufRead, W: Write>(
+   ///     reader: Reader<R>,
+   ///     writer: W,
+   /// ) -> Result<(), ConversionError> {
+   ///      Self::convert_reader_with_options(reader, writer, true)
+   ///  }
+
+    fn convert_reader_with_options<R: BufRead, W: Write>(
         mut reader: Reader<R>,
         writer: W,
+        preserve_whitespace: bool,
     ) -> Result<(), ConversionError> {
-        let mut serializer = BinaryXmlSerializer::new(writer)?;
+        let mut serializer = BinaryXmlSerializer::with_options(writer, preserve_whitespace)?;
         let mut buf = Vec::new();
         let mut tag_stack = Vec::new();
 
@@ -541,7 +579,10 @@ impl XmlToAbxConverter {
                 Event::Text(e) => {
                     let text = std::str::from_utf8(&e)?;
                     if type_detection::is_whitespace_only(text) {
-                        serializer.ignorable_whitespace(text)?;
+                        if serializer.preserve_whitespace {
+                            serializer.ignorable_whitespace(text)?;
+                        }
+                        // If preserve_whitespace is false, we skip whitespace-only text
                     } else {
                         serializer.text(text)?;
                     }
