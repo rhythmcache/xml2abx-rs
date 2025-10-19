@@ -19,8 +19,6 @@ name = "xml2abx"
 path = "src/lib.rs"
 
 [dependencies]
-base64 = "0.22"
-hex = "0.4"
 clap = { version = "4.5", features = ["derive"] }
 thiserror = "2.0"
 byteorder = "1.5"

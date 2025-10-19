@@ -17,9 +17,7 @@
 //! XmlToAbxConverter::convert_from_string(xml, &mut output).unwrap();
 //! ```
 
-use base64::Engine;
 use byteorder::{BigEndian, WriteBytesExt};
-use hex;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use std::collections::HashMap;
