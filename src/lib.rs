@@ -370,72 +370,14 @@ impl<W: Write> BinaryXmlSerializer<W> {
 }
 
 mod type_detection {
-    pub fn is_numeric(s: &str) -> bool {
-        if s.is_empty() {
-            return false;
-        }
-        let start = if s.starts_with('-') { 1 } else { 0 };
-        s.chars().skip(start).all(|c| c.is_ascii_digit())
+    /// only detects truly unambiguous cases ->> scientific notation doubles
+    pub fn is_scientific_notation(s: &str) -> bool {
+        s.contains('e') || s.contains('E')
     }
 
-    pub fn is_hex_number(s: &str) -> bool {
-        if s.len() < 3 {
-            return false;
-        }
-        let lower = s.to_lowercase();
-        if !lower.starts_with("0x") {
-            return false;
-        }
-        s.chars().skip(2).all(|c| c.is_ascii_hexdigit())
-    }
-
-    pub fn is_float(s: &str) -> bool {
-        if s.is_empty() {
-            return false;
-        }
-        let mut has_dot = false;
-        let start = if s.starts_with('-') { 1 } else { 0 };
-
-        for c in s.chars().skip(start) {
-            if c == '.' {
-                if has_dot {
-                    return false;
-                }
-                has_dot = true;
-            } else if !c.is_ascii_digit() {
-                return false;
-            }
-        }
-        has_dot
-    }
-
-    pub fn is_double(s: &str) -> bool {
-        if s.contains('e') || s.contains('E') {
-            return true;
-        }
-        if is_float(s) && s.len() > 10 {
-            return true;
-        }
-        false
-    }
-
+    /// 0nly "true" or "false" ->> unambiguous boolean
     pub fn is_boolean(s: &str) -> bool {
         s == "true" || s == "false"
-    }
-
-    pub fn is_base64(s: &str) -> bool {
-        if s.is_empty() || s.len() % 4 != 0 {
-            return false;
-        }
-        s.chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
-    }
-
-    pub fn is_hex_string(s: &str) -> bool {
-        if s.len() % 2 != 0 {
-            return false;
-        }
-        s.chars().all(|c| c.is_ascii_hexdigit())
     }
 
     pub fn is_whitespace_only(s: &str) -> bool {
@@ -490,13 +432,6 @@ impl XmlToAbxConverter {
         reader.config_mut().trim_text(!preserve_whitespace);
         Self::convert_reader_with_options(reader, writer, preserve_whitespace)
     }
-
-   /// fn convert_reader<R: BufRead, W: Write>(
-   ///     reader: Reader<R>,
-   ///     writer: W,
-   /// ) -> Result<(), ConversionError> {
-   ///      Self::convert_reader_with_options(reader, writer, true)
-   ///  }
 
     fn convert_reader_with_options<R: BufRead, W: Write>(
         mut reader: Reader<R>,
@@ -582,7 +517,6 @@ impl XmlToAbxConverter {
                         if serializer.preserve_whitespace {
                             serializer.ignorable_whitespace(text)?;
                         }
-                        // If preserve_whitespace is false, we skip whitespace-only text
                     } else {
                         serializer.text(text)?;
                     }
@@ -655,96 +589,30 @@ impl XmlToAbxConverter {
     ) -> Result<(), ConversionError> {
         use type_detection::*;
 
+        // only convert truly unambiguous cases
         if is_boolean(value) {
+            // "true" or "false" -> boolean
             serializer.attribute_boolean(name, value == "true")?;
-        } else if is_hex_number(value) {
-            match Self::parse_hex_number(value) {
-                Ok((int_val, is_long)) => {
-                    if is_long {
-                        serializer.attribute_long_hex(name, int_val)?;
-                    } else {
-                        serializer.attribute_int_hex(name, int_val as i32)?;
-                    }
-                }
-                Err(_) => {
-                    serializer.attribute(name, value)?;
-                }
-            }
-        } else if is_numeric(value) {
-            match value.parse::<i32>() {
-                Ok(int_val) => {
-                    serializer.attribute_int(name, int_val)?;
-                }
-                Err(_) => match value.parse::<i64>() {
-                    Ok(long_val) => {
-                        serializer.attribute_long(name, long_val)?;
-                    }
-                    Err(_) => {
-                        serializer.attribute(name, value)?;
-                    }
-                },
-            }
-        } else if is_double(value) {
+        } else if is_scientific_notation(value) {
+            // scientific notation like "1.23e10" -> a double
             match value.parse::<f64>() {
                 Ok(double_val) => {
                     serializer.attribute_double(name, double_val)?;
                 }
                 Err(_) => {
-                    serializer.attribute(name, value)?;
-                }
-            }
-        } else if is_float(value) {
-            match value.parse::<f32>() {
-                Ok(float_val) => {
-                    serializer.attribute_float(name, float_val)?;
-                }
-                Err(_) => {
-                    serializer.attribute(name, value)?;
-                }
-            }
-        } else if is_base64(value) && value.len() > 8 {
-            match base64::engine::general_purpose::STANDARD.decode(value) {
-                Ok(decoded) => {
-                    serializer.attribute_bytes_base64(name, &decoded)?;
-                }
-                Err(_) => {
-                    serializer.attribute(name, value)?;
-                }
-            }
-        } else if is_hex_string(value) && value.len() > 2 {
-            match hex::decode(value) {
-                Ok(decoded) => {
-                    serializer.attribute_bytes_hex(name, &decoded)?;
-                }
-                Err(_) => {
+                    // if parsing fails, keep as string
                     serializer.attribute(name, value)?;
                 }
             }
         } else {
-            if value.len() < 50
-                && (!value.contains(' ')
-                    || value == "true"
-                    || value == "false"
-                    || value.contains('.'))
-            {
+            // everything else -> store as string
+            // use interned strings for short values without spaces (optimization)
+            if value.len() < 50 && !value.contains(' ') {
                 serializer.attribute_interned(name, value)?;
             } else {
                 serializer.attribute(name, value)?;
             }
         }
         Ok(())
-    }
-
-    fn parse_hex_number(s: &str) -> Result<(i64, bool), ConversionError> {
-        let hex_part = &s[2..]; // Skip "0x"
-        if hex_part.len() <= 8 {
-            i64::from_str_radix(hex_part, 16)
-                .map(|val| (val, false))
-                .map_err(|_| ConversionError::InvalidHex)
-        } else {
-            i64::from_str_radix(hex_part, 16)
-                .map(|val| (val, true))
-                .map_err(|_| ConversionError::InvalidHex)
-        }
     }
 }

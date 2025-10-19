@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = matches.get_one::<String>("output");
     let in_place = matches.get_flag("in-place");
     let collapse_whitespace = matches.get_flag("collapse-whitespace");
-    
+
     // preserve_whitespace is the inverse of collapse_whitespace
     let preserve_whitespace = !collapse_whitespace;
 
@@ -59,11 +59,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(ref output_path) = final_output_path {
             if output_path == "-" {
-                XmlToAbxConverter::convert_from_string_with_options(&xml_content, io::stdout(), preserve_whitespace)
+                XmlToAbxConverter::convert_from_string_with_options(
+                    &xml_content,
+                    io::stdout(),
+                    preserve_whitespace,
+                )
             } else {
                 let file = File::create(output_path)?;
                 let writer = BufWriter::new(file);
-                XmlToAbxConverter::convert_from_string_with_options(&xml_content, writer, preserve_whitespace)
+                XmlToAbxConverter::convert_from_string_with_options(
+                    &xml_content,
+                    writer,
+                    preserve_whitespace,
+                )
             }
         } else {
             eprintln!("Error: Output path is required");
@@ -76,11 +84,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(ref output_path) = final_output_path {
             if output_path == "-" {
-                XmlToAbxConverter::convert_from_string_with_options(&xml_content, io::stdout(), preserve_whitespace)
+                XmlToAbxConverter::convert_from_string_with_options(
+                    &xml_content,
+                    io::stdout(),
+                    preserve_whitespace,
+                )
             } else {
                 let file = File::create(output_path)?;
                 let writer = BufWriter::new(file);
-                XmlToAbxConverter::convert_from_string_with_options(&xml_content, writer, preserve_whitespace)
+                XmlToAbxConverter::convert_from_string_with_options(
+                    &xml_content,
+                    writer,
+                    preserve_whitespace,
+                )
             }
         } else {
             eprintln!("Error: Output path is required");
