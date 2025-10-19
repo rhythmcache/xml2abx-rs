@@ -21,10 +21,10 @@ path = "src/lib.rs"
 [dependencies]
 base64 = "0.22"
 hex = "0.4"
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 thiserror = "2.0"
 byteorder = "1.5"
-quick-xml = { version = "0.38.0", features = ["encoding", "escape-html", "overlapped-lists"] }
+quick-xml = { version = "0.38.3", features = ["encoding", "escape-html", "overlapped-lists"] }
 
 [profile.release]
 opt-level = "z" 
