@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("collapse-whitespace")
                 .long("collapse-whitespace")
+                .short('i')
                 .help("Collapse whitespace")
                 .action(clap::ArgAction::SetTrue),
         )
